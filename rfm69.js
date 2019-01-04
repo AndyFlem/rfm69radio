@@ -1,4 +1,3 @@
-/* eslint-disable max-len */
 'use strict';
 const spi = require('spi-device');
 const Gpio = require('onoff').Gpio;
@@ -8,24 +7,24 @@ let useVerbose = false;
 
 function RFM69() {
   debug('New RMF69');
-};
+}
 
 RFM69.prototype.initialize = function({
-  freqBand = 'RF69_915MHZ',
-  address = 1,
+  freqBand = 'RF69_915MHZ', //'RF69_315MHZ' or 'RF69_433MHZ' or 'RF69_868MHZ' or 'RF69_915MHZ' depending on radio hardware
+  address = 1, //Address for this node
   networkID = 100,
-  isHighPowerRadio = true,
-  powerLevelPercent = 70,
+  isHighPowerRadio = true, //Must be true for RF69HCW
+  powerLevelPercent = 70, //Transmit power between 0 and 100
   interruptPin = 24, // Pin number of interrupt pin. This is a pin index not a GPIO number.
   resetPin = 5, // Pin number of reset pin. This is a pin index not a GPIO number.
   spiBus = 0, // SPI bus number.
   spiDevice = 0, // SPI device number.
-  promiscuousMode = false,
-  encryptionKey = 0,
-  autoAcknowledge = true,
-  verbose = true,
-  initializedCallback,
-  dataReceivedCallback,
+  promiscuousMode = false, //Accept all packets
+  encryptionKey = 0, //Key for AES encryption. Must be 16 chars long or no encryption set
+  autoAcknowledge = true, //Automatically reply with Ack
+  verbose = false, //Verbose logging to console
+  initializedCallback, //Called following this function
+  packetReceivedCallback, //Called with received packets
 }) {
   this.freqBand = freqBand;
   this.address = address;
@@ -46,9 +45,9 @@ RFM69.prototype.initialize = function({
   this.powerLevel = 0;
 
   this._peers = new Map();
-  this._packets = [];
+  //this._packets = [];
 
-  this._dataReceivedCallback = dataReceivedCallback;
+  this._packetReceivedCallback = packetReceivedCallback;
 
   const scope = this;
   debug('********** Starting initialization.');
@@ -76,6 +75,7 @@ RFM69.prototype.initialize = function({
   });
 };
 
+//Cleanup
 RFM69.prototype.shutdown = function() {
   debug('********** Shutting down.');
   this._gpio_reset.unexport();
@@ -83,13 +83,17 @@ RFM69.prototype.shutdown = function() {
   this._radio.closeSync();
 };
 
-RFM69.prototype.setPowerLevel = function(powerLevelPercent, callback) {
+//Set the transmit power level between 0 and 100. Default 70
+RFM69.prototype.setPowerLevel = function(powerLevelPercent) {
   this.powerLevelPercent = powerLevelPercent;
   this.powerLevel = Math.round(31.0 * (powerLevelPercent / 100.0));
-  debug(`Setting power level to: ${powerLevelPercent}% (${this.powerLevel})`);
+  debug(`********** Setting power level to: ${powerLevelPercent}% (${this.powerLevel})`);
   this._writeRegSync(reg.REG_PALEVEL, (this._readRegSync(reg.REG_PALEVEL) & 0xE0) | this.powerLevel);
 };
 
+//Read the temperature of the radios CMOS chip.
+//calFactor: Additional correction to corrects the slope, rising temp = rising val
+//Returns: Temperature in centigrade
 RFM69.prototype.readTemperature = function(callback, calFactor = 0) {
   debug('********** Reading temperature.');
   this._setMode(reg.RF69_MODE_STANDBY);
@@ -97,26 +101,39 @@ RFM69.prototype.readTemperature = function(callback, calFactor = 0) {
 
   const scope = this;
 
-  wait = setInterval(function() {
+  const wait = setInterval(function() {
     if (!(scope._readRegSync(reg.REG_TEMP1) & reg.RF_TEMP1_MEAS_RUNNING)) {
       clearInterval(wait);
-      temp = (Math.round(~scope._readRegSync(reg.REG_TEMP2)) * -1) + reg.COURSE_TEMP_COEF + calFactor;
+      // COURSE_TEMP_COEF puts reading in the ballpark, user can add additional correction
+      //'complement'corrects the slope, rising temp = rising val
+      const temp = (Math.round(~scope._readRegSync(reg.REG_TEMP2)) * -1) + reg.COURSE_TEMP_COEF + calFactor;
       debug(`Got temperature: ${temp}`);
       scope._setMode(reg.RF69_MODE_RX);
-      callback(temp);
+      if (typeof callback==='function') {callback(temp)}
     }
   }, 50);
 };
 
-RFM69.prototype.send = function({
-  toAddress = 0,
-  payload = '',
-  attempts = 3,
-  attemptWait = 200,
-  requireAck = true,
-  ackCallback,
-}) {
+//Send payload to toAddress. Attempts sets number of retries waiting for Ack.
+//attemptWait ms between attempts. Wait for ack is 1000ms so total cycle = 1000 + attemptWait
+//requireAck set to true if attempts>0
+RFM69.prototype.send = function({ toAddress = 0, payload = '', attempts = 3, attemptWait = 100, requireAck = true, ackCallback,}) {
   debug(`********** Sending '${payload}' to address: ${toAddress}`);
+    
+  if (!this._peers.has(toAddress)) {
+    debug(`Adding a new peer with address: ${toAddress}`);
+    this._peers.set(toAddress, {
+      lastReceivedPacket: {},
+      lastSentPacket: {},
+    });
+  }
+  const peer = this._peers.get(toAddress);
+  if (peer.sending===true){
+    ackCallback(new Error(`Already attempting to send to address ${toAddress}`));
+    return;
+  }
+  peer.sending=true;
+
   const scope = this;
   if (attempts > 1) {
     requireAck = true;
@@ -135,15 +152,6 @@ RFM69.prototype.send = function({
   if (payload.length > reg.RF69_MAX_DATA_LEN) {
     payload = payload.slice(0, reg.RF69_MAX_DATA_LEN);
   }
-
-  if (!this._peers.has(toAddress)) {
-    debug(`Adding a new peer with address: ${toAddress}`);
-    this._peers.set(senderAddress, {
-      lastReceivedPacket: {},
-      lastSentPacket: {},
-    });
-  }
-  const peer = this._peers.get(toAddress);
 
   const packet = {
     targetAddress: toAddress,
@@ -165,20 +173,37 @@ RFM69.prototype.send = function({
     scope._sendFrame(toAddress, payload, requireAck, function() {
       setTimeout(function() {
         if (attempt < attempts && packet.hasAck == false) {
-          debug(`No Ack Received, retry.`);
-          timerId = setTimeout(tick, attemptWait);
+          debug(`No Ack received for our packet, retry.`);
+          setTimeout(tick, attemptWait);
         } else if (packet.hasAck == true) {
-          debug(`Ack Received.`);
-          ackCallback(null, true);
+          debug(`Ack received for our packet to address ${toAddress} on send attempt ${attempt}.`);
+          peer.sending=false;
+          ackCallback(null, attempt);
         } else if (attempt == attempts) {
-          debug(`No Ack Received. Giving up.`);
-          ackCallback(new Error('No Ack Received.'), false);
+          debug(`No Ack received. Giving up.`);
+          peer.sending=false;
+          ackCallback(new Error(`No Ack received for our packet to address ${toAddress} after ${attempt} attempts.`), attempt);
         }
       }, 1000);
     });
-  }, 0);
+  }, 20);
 };
 
+//Calibrate the internal RC oscillator for use in wide temperature variations.
+//See RFM69 datasheet section [4.3.5. RC Timer Accuracy] for more information.
+RFM69.prototype.calibrateRadio = function(callback){
+  debug(`********** Calibrating radio.`);
+  this._writeRegSync(reg.REG_OSC1, reg.RF_OSC1_RCCAL_START)
+
+  const scope = this;
+  const inter = setInterval(function() {
+    if ((scope._readRegSync(reg.REG_OSC1) & reg.RF_OSC1_RCCAL_DONE) != 0x00) {
+      clearInterval(inter);
+      debug(`Calibration complete.`);
+      if(typeof callback==='function'){callback();}
+    }
+  }, 20);
+}
 
 RFM69.prototype._sendFrame = function(toAddress, payload, requestAck, callback) {
   debug(`Sending packet to: ${toAddress}`);
@@ -211,7 +236,6 @@ RFM69.prototype._sendFrame = function(toAddress, payload, requestAck, callback) 
   });
 };
 
-
 RFM69.prototype._initSpi = function(spiBus, spiDevice) {
   try {
     this._radio = spi.openSync(spiBus, spiDevice);
@@ -226,9 +250,9 @@ RFM69.prototype._resetRadio = function(callback) {
   debug(`Resetting radio.`);
 
   const scope = this;
-  scope._gpio_reset.write(1, function resetHighCallback(err) {
-    setTimeout(function resetTimeoutCallback() {
-      scope._gpio_reset.write(0, function resetLowCallback(err) {
+  scope._gpio_reset.write(1, function () {
+    setTimeout(function () {
+      scope._gpio_reset.write(0, function () {
         setTimeout(callback, 50);
       });
     }, 50);
@@ -319,8 +343,8 @@ RFM69.prototype._setEncryption = function(key) {
 };
 
 RFM69.prototype._setMode = function(newMode) {
-  // debug("Setting mode to: ", newMode);
-  if (newMode == this.mode) { } else if (newMode == reg.RF69_MODE_TX) {
+  
+  if (newMode == reg.RF69_MODE_TX) {
     this.modeName = 'TX';
     this._writeRegSync(reg.REG_OPMODE, (this._readRegSync(reg.REG_OPMODE) & 0xE3) | reg.RF_OPMODE_TRANSMITTER);
     if (this.isRFM69HW) this._setHighPowerRegs(true);
@@ -400,9 +424,9 @@ RFM69.prototype._waitReady = function(callback) {
   debug(`Waiting for ready..`);
   const scope = this;
   const inter = setInterval(function() {
-    debug(`..ready.`);
     if ((scope._readRegSync(reg.REG_IRQFLAGS1) & reg.RF_IRQFLAGS1_MODEREADY) != 0x00) {
       clearInterval(inter);
+      debug(`..ready.`);
       callback();
     }
   }, 20);
@@ -422,13 +446,16 @@ RFM69.prototype._interruptHandler = function() {
     this._setMode(reg.RF69_MODE_RX);
   } else if (irqFlags & reg.RF_IRQFLAGS2_PAYLOADREADY) {
     debug(`Interrupt: packet received.`);
-    this._packetReceivedHandler(function() {
+    this._dataReceivedHandler(function(err,packet) {
       scope._setMode(reg.RF69_MODE_RX);
+      if (packet && typeof scope._packetReceivedCallback==="function"){
+        scope._packetReceivedCallback(packet);
+      }
     });
   }
 };
 
-RFM69.prototype._packetReceivedHandler = function(callback) {
+RFM69.prototype._dataReceivedHandler = function(callback) {
   const message = [{
     byteLength: 5,
     sendBuffer: Buffer.from([(reg.REG_FIFO & 0x7F), 0, 0, 0, 0]),
@@ -437,16 +464,17 @@ RFM69.prototype._packetReceivedHandler = function(callback) {
   }];
   this._radio.transferSync(message);
 
-  let payloadLength;
-  let targetAddress;
-  let senderAddress;
-  let CTLbyte;
+  let payloadLength=0;
+  let targetAddress=0;
+  let senderAddress=0;
+  let CTLbyte=0x00;
   [payloadLength, targetAddress, senderAddress, CTLbyte] = message[0].receiveBuffer.slice(1);
   debug(`Packet - payload length: ${payloadLength}, target address: ${targetAddress}, sender address: ${senderAddress}, CTLByte: ${CTLbyte}`);
 
   if (!this.promiscuousMode && targetAddress != this.address && targetAddress != reg.RF69_BROADCAST_ADDR) {
     debug(`Drop packet not addressed here.`);
-    callback();
+    callback(new Error('Packet not addressed here.'),null);
+    return;
   } else {
     const ackRequested = CTLbyte & 0x40;
 
@@ -488,6 +516,7 @@ RFM69.prototype._packetReceivedHandler = function(callback) {
         targetAddress: targetAddress,
         senderAddress: senderAddress,
         peer: peer,
+        timeReceived: new Date(),
         rssi: rssi,
         payload: payload,
         payloadString: payloadStr,
@@ -495,15 +524,15 @@ RFM69.prototype._packetReceivedHandler = function(callback) {
         hasAck: false,
       };
       peer.lastReceivedPacket = packet;
-      this._packets.push(packet);
+      //this._packets.push(packet);
 
       if (ackRequested && this.autoAcknowledge) {
         debug(`Sending Ack.`);
         this._sendAckFrame(senderAddress, function() {
-          callback();
+          callback(null,packet); 
         });
       } else {
-        callback();
+        callback(null,packet);
       }
     }
   }

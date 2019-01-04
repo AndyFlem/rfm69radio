@@ -1,37 +1,59 @@
-/* eslint-disable require-jsdoc */
-/* eslint-disable max-len */
-'use strict';
+/* eslint-disable no-console */
+'use strict'; 
 const RFM69 = require('./index');
+
 const rfm69 = new RFM69();
 
 rfm69.initialize({
   address: 5,
-  encryptionKey: '0123456789abcdef',
+  encryptionKey: '0123456789abcdef', 
+  verbose:true, 
   initializedCallback: initializedCallback,
-  dataReceivedCallback: dataReceivedCallback,
+  packetReceivedCallback: packetReceivedCallback,
 });
 
 function initializedCallback() {
   console.log('Initialized');
   rfm69.readTemperature((temp) => {
     console.log('Temp: ', temp);
+    rfm69.calibrateRadio();
   });
 
   setInterval(function() {
+    const toAddress=2;
+    console.log(`Sending packet to address ${toAddress}`);
     rfm69.send({
-      toAddress: 2, payload: 'hello', ackCallback: function(err, res) {
-        console.log(err, res);
+      toAddress: toAddress, payload: 'hello', ackCallback: function(err, res) {
+        if (err){
+          console.log(err)
+        }else
+        {
+          console.log("Packet send successful on attempt:",res);
+        }
       },
     });
-  }, 5000);
+  }, 1000);
+
+  
+  setInterval(function() {
+    const toAddress=2;
+    console.log(`Sending packet to address ${toAddress}`);
+    rfm69.send({
+      toAddress: toAddress, payload: 'hello', ackCallback: function(err, res) {
+        if (err){
+          console.log(err)
+        }else
+        {
+          console.log("Packet send successful on attempt:",res);
+        }
+      },
+    });
+  }, 4000);
+
 }
 
-function dataReceivedCallback(err, msg) {
-  if (err) {
-    console.error('Error:', err);
-  } else {
-    console.log('Data:', msg);
-  }
+function packetReceivedCallback(packet) {
+    console.log(`Packet received from peer address '${packet.senderAddress}': ${packet.payloadString}`);
 }
 
 process.on('SIGINT', () => {
