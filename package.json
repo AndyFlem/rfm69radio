@@ -1,0 +1,15 @@
+{
+  "name": "rfm69_node",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "debug": "nodemon -- --inspect-brk=0.0.0.0:9229 test.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "onoff": "^3.2.2",
+    "spi-device": "^2.0.6"
+  }
+}
