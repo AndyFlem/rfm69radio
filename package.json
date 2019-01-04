@@ -11,5 +11,9 @@
   "dependencies": {
     "onoff": "^3.2.2",
     "spi-device": "^2.0.6"
+  },
+  "devDependencies": {
+    "eslint": "^5.11.1",
+    "eslint-config-google": "^0.11.0"
   }
 }
