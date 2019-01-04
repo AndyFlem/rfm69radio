@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 'use strict';
 const spi = require('spi-device');
 const Gpio = require('onoff').Gpio;
@@ -167,26 +168,40 @@ RFM69.prototype.send = function({ toAddress = 0, payload = '', attempts = 3, att
 
   let attempt = 0;
 
-  setTimeout(function tick() {
-    attempt += 1;
-    debug(`Send attempt: ${attempt} of ${attempts}`);
-    scope._sendFrame(toAddress, payload, requireAck, function() {
-      setTimeout(function() {
-        if (attempt < attempts && packet.hasAck == false) {
-          debug(`No Ack received for our packet, retry.`);
-          setTimeout(tick, attemptWait);
-        } else if (packet.hasAck == true) {
-          debug(`Ack received for our packet to address ${toAddress} on send attempt ${attempt}.`);
-          peer.sending=false;
-          ackCallback(null, attempt);
-        } else if (attempt == attempts) {
-          debug(`No Ack received. Giving up.`);
-          peer.sending=false;
-          ackCallback(new Error(`No Ack received for our packet to address ${toAddress} after ${attempt} attempts.`), attempt);
-        }
-      }, 1000);
-    });
-  }, 20);
+  if (requireAck){
+    setTimeout(function tick() {
+      attempt += 1;
+      debug(`Send attempt: ${attempt} of ${attempts}`);
+      scope._sendFrame(toAddress, payload, requireAck, function() {
+        setTimeout(function() {
+          if (attempt < attempts && packet.hasAck == false) {
+            debug(`No Ack received for our packet, retry.`);
+            setTimeout(tick, attemptWait);
+          } else if (packet.hasAck == true) {
+            debug(`Ack received for our packet to address ${toAddress} on send attempt ${attempt}.`);
+            peer.sending=false;
+            if (typeof ackCallback==='function') {ackCallback(null, attempt);}
+          } else if (attempt == attempts) {
+            debug(`No Ack received. Giving up.`);
+            peer.sending=false;
+            if (typeof ackCallback==='function') {ackCallback(new Error(`No Ack received for our packet to address ${toAddress} after ${attempt} attempts.`), attempt);}
+          }
+        }, 1000);
+      });
+    }, 20);
+  }else {
+    scope._sendFrame(toAddress, payload, false);
+    peer.sending=false;
+    if (typeof ackCallback==='function') {ackCallback(null, 1);}
+  }
+};
+
+//Broadcast a message to network i.e. sends to node 255 with no ACK request.
+RFM69.prototype.broadcast = function(payload = '', callback){
+  debug(`********* Broadcast: ${payload}`);
+  this.send({toAddress: 255,payload: payload, attempts: 1, requireAck: false,ackCallback: function(){
+    if (typeof callback==='function') {callback();}
+  }});
 };
 
 //Calibrate the internal RC oscillator for use in wide temperature variations.
@@ -232,7 +247,7 @@ RFM69.prototype._sendFrame = function(toAddress, payload, requestAck, callback) 
     scope._setMode(reg.RF69_MODE_TX);
     debug(`Sent: ${payload}`);
 
-    callback();
+    if (typeof callback==='function') {callback();}
   });
 };
 
