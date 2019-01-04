@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 'use strict'; 
-const RFM69 = require('./index');
+const RFM69 = require('../index');
 
 const rfm69 = new RFM69();
 

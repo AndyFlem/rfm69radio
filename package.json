@@ -2,13 +2,22 @@
   "name": "rfm69radio",
   "version": "1.0.0",
   "description": "A Node module for sending and receiving through RFM69 radios on the Raspberry Pi.",
+  "homepage": "https://github.com/AndyFlem/rfm69radio",
   "main": "index.js",
-  "repository": {"type": "git","url": "https://github.com/AndyFlem/rfm69.git"},
+  "repository": {"type": "git","url": "https://github.com/AndyFlem/rfm69radio.git"},
   "scripts": {
-    "debug": "nodemon -- --inspect-brk=0.0.0.0:9229 test.js"
+    "debug": "nodemon -- --inspect-brk=0.0.0.0:9229 test/test.js"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Andy Fleming",
+  "license": "GPL",
+  "keywords": [
+    "HopeRF",
+    "RFM69",
+    "RFM69W",
+    "RFM69HW",
+    "RFM69HCW",
+    "SPI"
+  ],
   "dependencies": {
     "onoff": "^3.2.2",
     "spi-device": "^2.0.6"

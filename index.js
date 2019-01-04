@@ -1,4 +1,4 @@
 /* eslint-disable max-len */
 'use strict';
 
-module.exports=require('./rfm69');
+module.exports=require('./lib/rfm69');
