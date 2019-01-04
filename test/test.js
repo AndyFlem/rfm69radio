@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
 'use strict'; 
 const RFM69 = require('../index');
-
 const rfm69 = new RFM69();
 
 rfm69.initialize({

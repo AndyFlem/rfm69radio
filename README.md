@@ -27,4 +27,47 @@ The second radio is connected to an Arduino UNO running the code in [frm69_test.
 `npm install rfm69radio`
 
 ## Usage
+Create the module.
+```javascript
+const RFM69 = require('../index');
+const rfm69 = new RFM69();
+```
 
+
+Initialize the radio. Provide an address for the node and optionally a _16 char_ encryption key.
+*initializedCallback* is called immediately following radio setup. 
+*packetReceivedCallback* is called with a properly addressed packet when received.
+```javascript
+rfm69.initialize({
+  address: 5,
+  encryptionKey: '0123456789abcdef', 
+  verbose:false, 
+  initializedCallback: initializedCallback,
+  packetReceivedCallback: packetReceivedCallback,
+}); 
+```
+
+To send:
+```javascript
+rfm69.send({
+    toAddress: toAddress, payload: 'hello', attempts: 1, requireAck: false, ackCallback: function(err, res){
+        if (err){
+            console.log(err)
+        }else{
+            console.log("Packet send successful on attempt:",res);
+        }
+    },
+});
+```
+
+Handle a received packet:
+```javascript
+function packetReceivedCallback(packet) {
+    console.log(`Packet received from peer address '${packet.senderAddress}': ${packet.payloadString}`);
+}
+```
+
+## Dependencies
+
+- GPIO access and interrupt detection: [onoff](https://www.npmjs.com/package/onoff)
+- SPI Interface: [spi-device](https://www.npmjs.com/package/spi-device)
