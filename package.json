@@ -16,7 +16,8 @@
     "RFM69W",
     "RFM69HW",
     "RFM69HCW",
-    "SPI"
+    "SPI",
+    "RaspberryPi"
   ],
   "dependencies": {
     "onoff": "^3.2.2",

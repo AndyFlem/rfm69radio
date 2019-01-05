@@ -44,7 +44,7 @@ void setup() {
   // Initialize the radio
   
   radio.initialize(FREQUENCY, NODEID, NETWORKID);
-  radio.encrypt("0123456789abcdef");
+  //radio.encrypt("0123456789abcdef");
   radio.promiscuous(true);
   #ifdef IS_RFM69HW_HCW
     radio.setHighPower(); //must include this only for RFM69HW/HCW!
@@ -58,20 +58,24 @@ void loop() {
 
     // Receive
     if (radio.receiveDone()) {
-      if (Serial) Serial.println("Message received");
+    Serial.print('[');Serial.print(radio.SENDERID);Serial.print("] ");
+    Serial.print((char*)radio.DATA);
+    Serial.print("   [RX_RSSI:");Serial.print(radio.RSSI);Serial.print("]");
+    Serial.println();
       if (radio.ACKRequested()) { radio.sendACK(radio.SENDERID); }
       delay(100);
     }
 
-    
+
     // Send     
     unsigned long currentMillis = millis();
     if (currentMillis - previousMillis >= sendInterval) {
       previousMillis = currentMillis;
   
       if (Serial) Serial.println("Sending");
-      char payload[] = "hello from test node";
-      if (radio.sendWithRetry(5, payload, sizeof(payload), 3, 200)) {
+      char payload[5];
+      String(millis(), DEC).toCharArray(payload,5);
+      if (radio.sendWithRetry(1, payload, sizeof(payload), 3, 200)) {
         if (Serial) Serial.println("ACK received");
       } else {
         if (Serial) Serial.println("No ACK");

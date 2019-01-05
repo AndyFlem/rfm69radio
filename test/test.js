@@ -1,28 +1,29 @@
 /* eslint-disable no-console */
 'use strict'; 
 const RFM69 = require('../index');
-const rfm69 = new RFM69();
+const rfm69 = new RFM69(); 
 
 rfm69.initialize({
-  address: 5,
-  encryptionKey: '0123456789abcdef', 
-  verbose:false, 
+  address: 1,
+  //encryptionKey: '0123456789abcdef',
+  verbose:false,
   initializedCallback: initializedCallback,
-  packetReceivedCallback: packetReceivedCallback,
-}); 
+});
 
 function initializedCallback() {
   console.log('Initialized');
+  rfm69.registerPacketReceivedCallback(packetReceivedCallback1);
+  rfm69.registerPacketReceivedCallback(packetReceivedCallback2);
   rfm69.readTemperature((temp) => {
     console.log('Temp: ', temp);
-    rfm69.calibrateRadio();
+    rfm69.calibrateRadio(()=>{});
   });
 
   setInterval(function() {
     const toAddress=2;
-    console.log(`Sending packet to address ${toAddress}`);
+    console.log(`${formatDatetime(new Date())} Sending packet to address ${toAddress} [${rfm69.modeName}]`);
     rfm69.send({
-      toAddress: toAddress, payload: 'hello', attempts: 1, requireAck: false, ackCallback: function(err, res) {
+      toAddress: toAddress, payload: `Hello ${timeStamp()}`, attempts: 3, requireAck: true, ackCallback: function(err, res) {
         if (err){
           console.log(err)
         }else
@@ -31,7 +32,7 @@ function initializedCallback() {
         }
       },
     });
-  }, 1000);
+  }, 3000);
 
   
   setTimeout(
@@ -58,10 +59,29 @@ function initializedCallback() {
   */
 }
 
-function packetReceivedCallback(packet) {
-    console.log(`Packet received from peer address '${packet.senderAddress}': ${packet.payloadString}`);
+function packetReceivedCallback1(packet) {
+    console.log(`Packet received (callback1) from peer address '${packet.senderAddress}': ${packet.payloadString}`);
+}
+function packetReceivedCallback2(packet) {
+  console.log(`Packet received (callback2) from peer address '${packet.senderAddress}': ${packet.payloadString}`);
 }
 
 process.on('SIGINT', () => {
   rfm69.shutdown();
 });
+
+
+function timeStamp() {
+  const m=new Date();
+  return ('0' + m.getUTCMinutes()).slice(-2) + ':' +
+    ('0' + m.getUTCSeconds()).slice(-2) + '.' +
+    m.getUTCMilliseconds();
+}
+
+function formatDatetime(m) {
+  //return ""
+  return ('0' + m.getUTCHours()).slice(-2) + ':' +
+    ('0' + m.getUTCMinutes()).slice(-2) + ':' +
+    ('0' + m.getUTCSeconds()).slice(-2) + '.' +
+    m.getUTCMilliseconds();
+}
