@@ -1,6 +1,6 @@
 {
   "name": "rfm69radio",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A Node module for sending and receiving through RFM69 radios on the Raspberry Pi.",
   "homepage": "https://github.com/AndyFlem/rfm69radio",
   "main": "index.js",
