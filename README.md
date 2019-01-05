@@ -36,15 +36,20 @@ const rfm69 = new RFM69();
 
 Initialize the radio. Provide an address for the node and optionally a _16 char_ encryption key.
 *initializedCallback* is called immediately following radio setup. 
-*packetReceivedCallback* is called with a properly addressed packet when received.
 ```javascript
 rfm69.initialize({
   address: 5,
   encryptionKey: '0123456789abcdef', 
   verbose:false, 
   initializedCallback: initializedCallback,
-  packetReceivedCallback: packetReceivedCallback,
 }); 
+```
+
+Register callbacks to handle received packets:
+```javascript
+function initializedCallback() {
+    rfm69.registerPacketReceivedCallback(packetReceivedCallback);
+  }
 ```
 
 To send:
