@@ -1,5 +1,5 @@
+/* eslint-disable promise/no-nesting */
 /* eslint-disable max-len */
-/* eslint-disable no-console */
 'use strict';
 
 const rfm69 = require('../lib/rfm69')();
@@ -12,13 +12,15 @@ rfm69.initialize({
 })
   .then(() => {
     console.log('Initialized');
-    return rfm69.registerPacketReceivedCallback(packetReceivedCallback1);
+    rfm69.registerPacketReceivedCallback(packetReceivedCallback1);
+    rfm69.registerPacketReceivedCallback(packetReceivedCallback2);
+    return true;
   })
-  .then(() => rfm69.registerPacketReceivedCallback(packetReceivedCallback2))
   .then(() => rfm69.readTemperature())
   .then((temp) => {
     console.log(`Temp: ${temp}`);
-    return rfm69.calibrateRadio();
+    rfm69.calibrateRadio();
+    return true;
   })
   .then(() => {
     setInterval(() => {
@@ -27,15 +29,20 @@ rfm69.initialize({
       rfm69.send({ toAddress: toAddress, payload: `Hello ${timeStamp()}`, attempts: 3, requireAck: true })
         .then((packet) => {
           console.log(`Sent on attempt ${packet.attempts} after ${packet.ackTimestamp - packet.timestamp}ms`);
+          return true;
         })
         .catch(err => console.log(err));
     }, 3000);
-  })
-  .then(() => {
+
     setTimeout(() => {
       rfm69.broadcast('Broadcast!!')
-        .then(() => console.log('Sent broadcast'));
+        .then(() => {
+          console.log('Sent broadcast');
+          return true;
+        })
+        .catch(err => console.log(err));
     }, 2000);
+    return true;
   })
   .catch(err => {
     console.log(`Error initializing radio: ${err}`);
@@ -53,7 +60,6 @@ function packetReceivedCallback2(packet) {
 process.on('SIGINT', () => {
   rfm69.shutdown();
 });
-
 
 function timeStamp() {
   const m = new Date();
