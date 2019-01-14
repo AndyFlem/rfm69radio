@@ -1,10 +1,13 @@
 {
   "name": "rfm69radio",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "A Node module for sending and receiving through RFM69 radios on the Raspberry Pi.",
   "homepage": "https://github.com/AndyFlem/rfm69radio",
   "main": "index.js",
-  "repository": {"type": "git","url": "https://github.com/AndyFlem/rfm69radio.git"},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AndyFlem/rfm69radio.git"
+  },
   "scripts": {
     "debug": "nodemon -- --inspect-brk=0.0.0.0:9229 test/test.js"
   },
@@ -25,6 +28,8 @@
   },
   "devDependencies": {
     "eslint": "^5.11.1",
-    "eslint-plugin-node": "^8.0.0"
+    "eslint-config-strongloop": "^2.1.0",
+    "eslint-plugin-node": "^8.0.0",
+    "eslint-plugin-promise": "^4.0.1"
   }
 }

@@ -1,5 +1,6 @@
 module.exports = {
-    "extends": ["eslint:recommended", "plugin:node/recommended"],
+    "plugins": ["promise"],  
+    "extends": ["strongloop", "plugin:node/recommended","plugin:promise/recommended"],
     "env": {
         "node": true
     },
