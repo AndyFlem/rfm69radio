@@ -94,6 +94,25 @@ function packetReceivedCallback2(packet) {
 } 
 ```
 
+The initialize parameters and their defaults are:
+```javascript
+{
+        freqBand = 'RF69_915MHZ', // 'RF69_315MHZ' or 'RF69_433MHZ' or 'RF69_868MHZ' or 'RF69_915MHZ' depending on radio hardware
+        address = 1, // Address for this node
+        networkID = 100,
+        isRFM69HW = true, // Is High Power radio? Must be true for RF69HCW, RF69HW
+        powerLevelPercent = 70, // Transmit power between 0 and 100
+        interruptPin = 24, // Pin number of interrupt pin. This is a GPIO number (GPIO24 = pin 18).
+        resetPin = 5, // Pin number of reset pin. This is a GPIO number (GPIO5 = pin 29).
+        spiBus = 0, // SPI bus number.
+        spiDevice = 0, // SPI device number.
+        promiscuousMode = false, // Accept all packets
+        encryptionKey = 0, // Key for AES encryption. Must be 16 chars long or no encryption set
+        autoAcknowledge = true, // Automatically reply with Ack
+        verbose = false, // Verbose logging to console
+      }
+```
+
 ## Dependencies
 
 - GPIO access and interrupt detection: [onoff](https://www.npmjs.com/package/onoff)
