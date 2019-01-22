@@ -54,7 +54,7 @@ function packetReceivedCallback1(packet) {
   console.log(`Packet received (callback1) from peer ${packet.senderAddress} "${packet.payloadString}" RSSI:${packet.rssi}`);
 }
 function packetReceivedCallback2(packet) {
-  console.log(`Packet received (callback1) from peer ${packet.senderAddress} "${packet.payloadString}" RSSI:${packet.rssi}`);
+  console.log(`Packet received (callback2) from peer ${packet.senderAddress} "${packet.payloadString}" RSSI:${packet.rssi}`);
 }
 
 process.on('SIGINT', () => {
