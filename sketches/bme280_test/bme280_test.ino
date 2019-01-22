@@ -43,7 +43,6 @@ Adafruit_BME280 bme; // I2C
 
 int16_t packetnum = 0;  // packet counter, we increment per xmission
 
-unsigned long delayTime;
 
 void setupBME() {
     Serial.println(F("BME280 test"));
@@ -86,38 +85,52 @@ void setup() {
   setupRadio();
   setupBME();
 
-  delayTime = 1000;
 
   Serial.println();
 
 }
 
+unsigned long previousMillis = 0;
+const long sendInterval = 5000;
+
 void loop() {
-  delay(delayTime);  // Wait 1 second between transmits, could also 'sleep' here!
-
-  char Pstr[10];
-  char Fstr[10];
-  char Hstr[10];
-  double F,P,H;
-  char buffer[50];
-  byte sendLen;
-
-  P = bme.readPressure() / 100.0F;
-  F = bme.readTemperature();
-  H = bme.readHumidity();
-
-  dtostrf(F, 3,2, Fstr);
-  dtostrf(H, 3,2, Hstr);
-  dtostrf(P, 3,2, Pstr);
-  sprintf(buffer, "{\"T\":%s,\"H\":%s,\"P\":%s}", Fstr, Hstr, Pstr);
-  Serial.println(buffer);
-  sendLen = strlen(buffer);
-
-  if (radio.sendWithRetry(1, buffer, sendLen, 3, 200)) {
-    if (Serial) Serial.println("ACK received");
-  } else {
-    if (Serial) Serial.println("No ACK");
+  if (radio.receiveDone()) {
+    Serial.print('[');Serial.print(radio.SENDERID);Serial.print("] ");
+    Serial.print((char*)radio.DATA);
+    Serial.print("   [RX_RSSI:");Serial.print(radio.RSSI);Serial.print("]");
+    Serial.println();
+    if (radio.ACKRequested()) { radio.sendACK(radio.SENDERID); }
+    delay(100);
   }
 
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= sendInterval) {
+    previousMillis = currentMillis;
+
+
+    char Pstr[10];
+    char Fstr[10];
+    char Hstr[10];
+    double F,P,H;
+    char buffer[50];
+    byte sendLen;
+
+    P = bme.readPressure() / 100.0F;
+    F = bme.readTemperature();
+    H = bme.readHumidity();
+
+    dtostrf(F, 3,2, Fstr);
+    dtostrf(H, 3,2, Hstr);
+    dtostrf(P, 3,2, Pstr);
+    sprintf(buffer, "{\"T\":%s,\"H\":%s,\"P\":%s}", Fstr, Hstr, Pstr);
+    Serial.println(buffer);
+    sendLen = strlen(buffer);
+
+    if (radio.sendWithRetry(1, buffer, sendLen, 3, 200)) {
+      if (Serial) Serial.println("ACK received");
+    } else {
+      if (Serial) Serial.println("No ACK");
+    }
+  }
 }
 
