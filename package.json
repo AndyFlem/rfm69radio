@@ -23,7 +23,7 @@
     "RaspberryPi"
   ],
   "dependencies": {
-    "onoff": "^6.0.3",
+    "onoff": "^6.0.4",
     "spi-device": "^3.1.2"
   },
   "devDependencies": {
