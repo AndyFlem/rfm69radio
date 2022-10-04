@@ -23,8 +23,8 @@
     "RaspberryPi"
   ],
   "dependencies": {
-    "onoff": "^3.2.2",
-    "spi-device": "^2.0.6"
+    "onoff": "^6.0.3",
+    "spi-device": "^3.1.2"
   },
   "devDependencies": {
     "eslint": "^5.11.1",
